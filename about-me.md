@@ -1,5 +1,5 @@
 # About me
-🚀 Simon Felhofer
+Simon Felhofer
 
 3 Facts about me:
 - I have a cat called "Båmps" she is very cute and orange. Also bit lazy and loves to sleep.
