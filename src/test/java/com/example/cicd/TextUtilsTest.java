@@ -25,3 +25,5 @@ class TextUtilsTest {
         assertTrue(TextUtils.isPalindrome("Anna"));
     }
 }
+
+/* Das ist ein Kommentar */
