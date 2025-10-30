@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["pom.xml", "src/**"]
+  pull_request:
+    branches: [main]
+    paths: ["pom.xml", "src/**"]
+
+# No duplicate runs on rapid pushes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimal permissions; PR decoration needs pull-requests: write
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello, CI!"
+
+  # Matrix build & test (Ubuntu/Windows × Java 17/21), one excluded combo
+  build-test:
+    needs: hello
+    name: "Test (${{ matrix.os }} / Java ${{ matrix.java }})"
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        java: [17, 21]
+        exclude:
+          - os: windows-latest
+            java: 21 # excluded to reduce time; justify in PDF
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      # Run tests (Surefire). Coverage is produced later in the Sonar job via `verify`.
+      - name: Build & Test
+        run: mvn -B -DskipTests=false test
+
+      # Publish Surefire reports per matrix variant
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.os }}-java${{ matrix.java }}
+          path: target/surefire-reports
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Single SonarCloud analysis (Ubuntu + Java 21) so we don't analyze N times.
+  sonar:
+    name: "Sonar (ubuntu / Java 21)"
+    needs: build-test
+    # Analyze on pushes to main and on PRs
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      # Generate JaCoCo XML via verify
+      - name: Build, Test & Coverage (JaCoCo)
+        run: mvn -B clean verify
+
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B sonar:sonar
+          -Dsonar.projectKey=Foelli_cicd-BA-uebung-Felhofer
+          -Dsonar.organization=foellidev-hub
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.branch.name=main
+          -Dsonar.java.binaries=target/classes
