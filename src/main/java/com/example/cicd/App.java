@@ -1,4 +1,5 @@
 package com.example.cicd;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -7,10 +8,10 @@ public class App {
         Calculator calc = new Calculator();
         int sum = calc.add(2, 3);
         System.out.println("Sum(2,3) = " + sum);
-        
+
         List<Integer> numbers = Arrays.asList(1, 2, 3, 4);
-        int s1 = calc.sumUp(numbers); 
-        int s2 = calc.addAll(numbers);   
+        int s1 = calc.sumUp(numbers);
+        int s2 = calc.addAll(numbers);
         System.out.println("sumUp=" + s1 + ", addAll=" + s2);
 
         System.out.println("isPalindrome('Anna')? " + TextUtils.isPalindrome("Anna"));
