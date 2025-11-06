@@ -3,17 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: ["pom.xml", "src/**"]
+    paths: ["pom.xml", "src/**", "Dockerfile"]
   pull_request:
     branches: [main]
-    paths: ["pom.xml", "src/**"]
+    paths: ["pom.xml", "src/**", "Dockerfile"]
 
 # No duplicate runs on rapid pushes
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Minimal permissions; PR decoration needs pull-requests: write
 permissions:
   contents: read
   pull-requests: write
@@ -24,7 +23,6 @@ jobs:
     steps:
       - run: echo "Hello, CI!"
 
-  # Matrix build & test (Ubuntu/Windows × Java 17/21), one excluded combo
   build-test:
     needs: hello
     name: "Test (${{ matrix.os }} / Java ${{ matrix.java }})"
@@ -54,7 +52,6 @@ jobs:
       - name: Build & Test
         run: mvn -B -DskipTests=false test
 
-      # Publish Surefire reports per matrix variant
       - name: Upload Surefire reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,11 +61,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # Single SonarCloud analysis (Ubuntu + Java 21) so we don't analyze N times.
   sonar:
     name: "Sonar (ubuntu / Java 21)"
     needs: build-test
-    # Analyze on pushes to main and on PRs
     if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -101,3 +96,44 @@ jobs:
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
           -Dsonar.branch.name=main
           -Dsonar.java.binaries=target/classes
+
+  docker-single-arch:
+    name: "Docker (linux/amd64) + Artifact"
+    needs: sonar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute short SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Build (linux/amd64) and load into local Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          tags: local/app:${{ steps.vars.outputs.short_sha }}
+          load: true
+
+      - name: Save image as tar
+        run: |
+          mkdir -p dist
+          docker save local/app:${{ steps.vars.outputs.short_sha }} \
+            -o dist/docker-image-${{ steps.vars.outputs.short_sha }}.tar
+          ls -lh dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ steps.vars.outputs.short_sha }}
+          path: dist/docker-image-${{ steps.vars.outputs.short_sha }}.tar
+          retention-days: 7
