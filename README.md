@@ -3,11 +3,6 @@
 
 [![CI](https://github.com/Foelli/cicd-BA-uebung-Felhofer/actions/workflows/ex02-ci-build-main.yml/badge.svg)](https://github.com/Foelli/cicd-BA-uebung-Felhofer/actions/workflows/ex02-ci-build-main.yml)
 
-[![Build](https://github.com/Foelli/cicd-BA-uebung-Felhofer/actions/workflows/build.yml/badge.svg)](https://github.com/Foelli/cicd-BA-uebung-Felhofer/actions/workflows/build.yml)
-
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?
-project=Foelli_cicd-BA-uebung-Felhofer&metric=coverage)](https://sonarcloud.io/dashboard?id=Foelli_cicd-BA-uebung-Felhofer)
-
 
 Dieses Repository ist der Startpunkt für **Übung 1** und wird in **allen folgenden Übungen** weiterverwendet
 (CI mit GitHub Actions → SonarCloud → Docker → Security-Scan).
