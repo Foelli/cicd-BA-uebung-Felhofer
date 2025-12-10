@@ -121,8 +121,13 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          tags: local/app:${{ steps.vars.outputs.short_sha }}
+          tags: |
+            local/app:${{ steps.vars.outputs.short_sha }}
+            myapp:local
           load: true
+
+      - name: List images on runner (debug)
+        run: docker images
 
       - name: Save image as tar
         run: |
