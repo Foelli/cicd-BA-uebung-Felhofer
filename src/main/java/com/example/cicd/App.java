@@ -24,3 +24,5 @@ public class App {
         logger.info("safeParseInt('x'): " + TextUtils.safeParseInt("x"));
     }
 }
+
+//Test
