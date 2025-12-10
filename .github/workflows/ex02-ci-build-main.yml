@@ -142,3 +142,66 @@ jobs:
           name: docker-image-${{ steps.vars.outputs.short_sha }}
           path: dist/docker-image-${{ steps.vars.outputs.short_sha }}.tar
           retention-days: 7
+
+  trivy-scan:
+    name: "Security Scan (Trivy)"
+    needs: sonar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Build Docker image for scanning
+        run: docker build -t myapp:local .
+
+      - name: Run Trivy scan (JSON)
+        run: trivy image -f json -o trivy-ci.json myapp:local
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-ci.json
+          retention-days: 7
+
+  grype-scan:
+    name: "Security Scan (Grype)"
+    needs: sonar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Build Docker image for scanning
+        run: docker build -t myapp:local .
+
+      - name: Run Grype scan (JSON)
+        run: grype myapp:local -o json > grype-ci.json
+
+      - name: Upload Grype report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-report
+          path: grype-ci.json
+          retention-days: 7
